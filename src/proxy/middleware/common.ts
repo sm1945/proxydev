@@ -56,19 +56,43 @@ export function sendProxyError(
       ? `The proxy encountered an error while trying to process your prompt.`
       : `The proxy encountered an error while trying to send your prompt to the API.`;
 
-  sendErrorToClient({
-    options: {
-      format: req.inboundApi,
-      title: `Proxy error (HTTP ${statusCode} ${statusMessage})`,
-      message: `${msg} Further details are provided below.`,
-      obj: errorPayload,
-      reqId: req.id,
-      model: req.body?.model,
+  const errorResponse = { 
+    id: `error-${Date.now()}`,
+    object: "chat.completion",
+    created: Date.now(),
+    model: req.body?.model || "unknown",
+    usage: {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0
     },
-    req,
-    res,
-  });
+    choices: [
+      {
+        message: {
+          role: "assistant",
+          content: `### **Proxy error (HTTP ${statusCode} ${statusMessage})**
+
+${msg} Further details are provided below.
+
+----
+
+${errorPayload.error.message}
+
+\`\`\`json
+${JSON.stringify(errorPayload, null, 2)}
+\`\`\`
+
+<!-- oai-proxy-error -->`
+        },
+        finish_reason: `Proxy error (HTTP ${statusCode} ${statusMessage})`,
+        index: 0
+      }
+    ]
+  };
+
+  res.status(statusCode).json(errorResponse);
 }
+
 
 export const handleProxyError: httpProxy.ErrorCallback = (err, req, res) => {
   req.log.error(err, `Error during http-proxy-middleware request`);
