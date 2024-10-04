@@ -79,16 +79,31 @@ async function getGpt4VisionTokenCost(
   url: string,
   detail: "auto" | "low" | "high" = "auto"
 ) {
-  // For now we do not allow remote images as the proxy would have to download
-  // them, which is a potential DoS vector.
-  if (!url.startsWith("data:image/")) {
-    throw new Error(
-      "Remote images are not supported. Add the image to your prompt as a base64 data URL."
-    );
+  let buffer: Buffer;
+
+  if (url.startsWith("data:image/")) {
+    const base64Data = url.split(",")[1];
+    buffer = Buffer.from(base64Data, "base64");
+  } else if (url.startsWith("http://") || url.startsWith("https://")) {
+    // fallback to fetch image from url
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      buffer = Buffer.from(await response.arrayBuffer());
+    } catch (error) {
+      throw new Error(`Failed to fetch image from URL: ${url}. ${error.message}`);
+    }
+  } else {
+    // if neither then assume its a base64 encoded image
+    try {
+      buffer = Buffer.from(url, "base64");
+    } catch (error) {
+      throw new Error(`Invalid image data: ${error.message}`);
+    }
   }
 
-  const base64Data = url.split(",")[1];
-  const buffer = Buffer.from(base64Data, "base64");
   const image = libSharp(buffer);
   const metadata = await image.metadata();
 
