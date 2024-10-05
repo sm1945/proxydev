@@ -35,6 +35,7 @@ const getModelsResponse = () => {
     "gemini-1.0-pro",
     "gemini-1.5-pro",
     "gemini-1.5-pro-latest",
+    "gemini-1.5-pro-002,
   ];
 
   const models = googleAIVariants.map((id) => ({
